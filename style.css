@@ -77,3 +77,13 @@ button:hover {
     display: block; /* Deja de ser centrado */
     padding: 2rem;
 }
+
+.form-container {
+    background: white;
+    padding: 2.5rem;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+    width: 90%;          /* Ocupa casi todo el ancho disponible */
+    max-width: 600px;    /* Un poco más ancho que el login */
+    margin: 20px auto;   /* Margen para que no pegue con los bordes */
+}

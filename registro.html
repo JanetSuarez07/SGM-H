@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>SGM-H | Nueva Orden</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="form-container">
+        <h1>REGISTRO DE ORDEN DE SERVICIO</h1>
+
+        <div class="form-section">
+            <input type="text" id="folio" placeholder="Folio" readonly>
+            <input type="text" id="fecha" readonly>
+            <input type="text" id="hora" readonly>
+        </div>
+
+        <input list="lista_solicitantes" id="solicitante_nombre" placeholder="Nombre del Solicitante">
+        <datalist id="lista_solicitantes">
+            <option value="Dra. María González">
+            <option value="Lic. Pedro Ruiz">
+            <option value="Jefe Enf. Ana López">
+        </datalist>
+        
+        <div class="form-section">
+            <select id="area">
+                <option value="">Seleccione Área</option>
+                <option value="medicina_interna">Medicina Interna</option>
+                <option value="urgencias">Urgencias</option>
+            </select>
+            <textarea id="descripcion_problema" placeholder="Descripción del trabajo requerido"></textarea>
+        </div>
+
+        <div class="form-section">
+            <label>Estado del Equipo y/o Accesorios (Antes del Mantenimiento):</label>
+            <div class="radio-group">
+                <input type="radio" name="estado_antes" value="funcionamiento"> Funcionamiento
+                <input type="radio" name="estado_antes" value="fuera_servicio"> Fuera de Servicio
+                <input type="radio" name="estado_antes" value="NA"> No Aplica 
+            </div>
+            
+            <label>Tipo de Mantenimiento:</label>
+            <div class="radio-group">
+                <input type="radio" name="tipo_mtt" value="MP"> MP
+                <input type="radio" name="tipo_mtt" value="MC"> MC
+                <input type="radio" name="tipo_mtt" value="MC_MP"> MC/MP
+                <input type="radio" name="tipo_mtt" value="NA"> No Aplica
+            </div>
+        </div>
+
+        <div class="form-section">
+            <label>Recibe Orden de Trabajo:</label>
+            <input type="text" id="recibe_orden" value="Ing. Grecia Alejandra Martínez Alvarado">
+        
+            <label>Jefe de Taller:</label>
+            <input type="text" id="jefe_taller" value="Ing. Alejandra Guadalupe Ibarra Palomino">
+        
+            <label>Realiza el Trabajo:</label>
+            <input type="text" id="realiza_trabajo" placeholder="Nombre técnico">
+        
+            <label>Recibe Trabajo:</label>
+            <input type="text" id="recibe_trabajo" placeholder="Nombre de quien recibe">
+        </div>
+
+        <button id="guardarBtn">Guardar y Generar PDF</button>
+    </div>
+
+    <script type="module" src="app.js"></script>
+</body>
+</html>
