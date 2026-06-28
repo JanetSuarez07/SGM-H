@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SGM-H | Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="dashboard-container">
+        <h1>PANEL DE CONTROL - SGM-H</h1>
+        <p>Departamento de Ingeniería Biomédica</p>
+
+        <div class="menu-grid">
+            <button class="menu-btn" onclick="window.location.href='registro.html'">
+                <span>+</span> Nueva Orden de Servicio
+            </button>
+
+            <button class="menu-btn" onclick="window.location.href='consulta.html'">
+                <span></span> Consultar Órdenes
+            </button>
+        </div>
+
+        <button class="logout-btn" onclick="cerrarSesion()">Cerrar Sesión</button>
+    </div>
+
+</body>
+</html>

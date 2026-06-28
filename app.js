@@ -22,10 +22,15 @@ document.getElementById("loginBtn").addEventListener("click", () => {
 
     signInWithEmailAndPassword(auth, email, password)
         .then((userCredential) => {
-            alert("Acceso concedido.");
-            // Aquí luego haremos la redirección al dashboard
+            // ÉXITO: Firebase confirmó que el usuario es válido
+            console.log("Usuario autenticado correctamente");
+            
+            // Redirección al Dashboard
+            window.location.href = "dashboard.html"; 
         })
         .catch((error) => {
+            // ERROR: Credenciales incorrectas o problema de red
             alert("Error: Verifica tus credenciales.");
+            console.error("Error en login: ", error.message);
         });
 });
