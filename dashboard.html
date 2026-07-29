@@ -3,28 +3,111 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SGM-H | Dashboard</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <title>SGM-H | Tablero y Registro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo+Narrow:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <div class="dashboard-container">
-        <h1>PANEL DE CONTROL - SGM-H</h1>
-        <p>Departamento de Ingeniería Biomédica</p>
+    <div class="dashboard-wrapper">
+        <aside class="sidebar">
+            <h2>SGM-H</h2>
+            <nav>
+                <ul>
+                    <li><a href="dashboard.html"> Tablero</a></li>
+                    <li><a href="gestion.html"> Gestión de Órdenes</a></li>
+                </ul>
+            </nav>
+            <button class="logout-btn" onclick="cerrarSesion()" style="margin-top: 20px; width: 100%; cursor: pointer;">Cerrar Sesión</button>
+        </aside>
 
-        <div class="menu-grid">
-            <button class="menu-btn" onclick="window.location.href='registro.html'">
-                <span>+</span> Nueva Orden de Servicio
-            </button>
+        <main class="content">
+            <div class="form-container">
+                <h1>REGISTRO DE ORDEN DE SERVICIO</h1>
 
-            <button class="menu-btn" onclick="window.location.href='consulta.html'">
-                <span></span> Consultar Órdenes
-            </button>
-        </div>
+                <div class="modulo">
+                    <h2>Información Automática</h2>
+                    <div class="grid-container">
+                        <input type="text" id="folio" placeholder="Folio" readonly>
+                        <input type="text" id="fecha" readonly>
+                        <input type="text" id="hora" readonly>
+                    </div>
+                </div>
 
-        <button class="logout-btn" onclick="cerrarSesion()">Cerrar Sesión</button>
+                <div class="modulo">
+                    <h2>Datos de la Solicitud</h2>
+                    <div class="grid-container">
+                        <input list="lista_solicitantes" id="solicitante_nombre" placeholder="Nombre del Solicitante">
+                        <datalist id="lista_solicitantes">
+                            <option value="Dra. María González">
+                            <option value="Lic. Pedro Ruiz">
+                            <option value="Jefe Enf. Ana López">
+                        </datalist>
+
+                        <select id="area">
+                            <option value="">Seleccione Área</option>
+                            <option value="medicina_interna">Medicina Interna</option>
+                            <option value="urgencias">Urgencias</option>
+                        </select>
+                        
+                        <textarea id="descripcion_problema" class="full-width" placeholder="Descripción del Trabajo Requerido"></textarea>
+                        <textarea id="trabajo_realizado" class="full-width" placeholder="Descripción del Trabajo Realizado"></textarea>
+                        <textarea id="refacciones_usadas" class="full-width" placeholder="Refacciones, Accesorios y/o Químicos Utilizados"></textarea>
+                    </div>
+                </div>
+
+                <div class="modulo">
+                    <h2>Estado y Mantenimiento</h2>
+                    <div class="grid-container">
+                        <div>
+                            <label>Estado del Equipo (Antes del Mantenimiento):</label>
+                            <div class="radio-group">
+                                <input type="radio" name="estado_antes" value="funcionamiento"> Funcionamiento
+                                <input type="radio" name="estado_antes" value="fuera_servicio"> Fuera de Servicio
+                                <input type="radio" name="estado_antes" value="NA"> No Aplica 
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label>Tipo de Mantenimiento:</label>
+                            <div class="radio-group">
+                                <input type="radio" name="tipo_mtt" value="MP"> MP
+                                <input type="radio" name="tipo_mtt" value="MC"> MC
+                                <input type="radio" name="tipo_mtt" value="MC_MP"> MC/MP
+                                <input type="radio" name="tipo_mtt" value="NA"> No Aplica
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modulo">
+                    <h2>Firmas y Responsables</h2>
+                    <div class="grid-container">
+                        <div class="field-wrapper">
+                            <label>Recibe Orden de Trabajo:</label>
+                            <input type="text" id="recibe_orden" value="Ing. Alejandra Guadalupe Ibarra Palomino">
+                        </div>
+                        <div class="field-wrapper">
+                            <label>Jefe de Taller:</label>
+                            <input type="text" id="jefe_taller" value="Ing. Alejandra Guadalupe Ibarra Palomino">
+                        </div>
+                        <div class="field-wrapper">
+                            <label>Realiza el Trabajo:</label>
+                            <input type="text" id="realiza_trabajo" placeholder="Nombre técnico">
+                        </div>
+                        <div class="field-wrapper">
+                            <label>Recibe Trabajo:</label>
+                            <input type="text" id="recibe_trabajo" placeholder="Nombre de quien recibe">
+                        </div>
+                    </div>
+                </div>
+
+                <button id="guardarBtn" class="full-width">Guardar y Generar PDF</button>
+                <button id="limpiarBtn" type="button" style="background-color: #e74c3c; color: white; flex: 1;">Limpiar Formulario</button>
+            </div>
+        </main> 
     </div>
 
+    <script type="module" src="app.js"></script>
 </body>
 </html>

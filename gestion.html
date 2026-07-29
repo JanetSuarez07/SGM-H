@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SGM-H | Gestión de Órdenes</title>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo+Narrow:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="dashboard-wrapper">
+        <aside class="sidebar">
+            <h2>SGM-H</h2>
+            <nav>
+                <ul>
+                    <li><a href="dashboard.html"> Tablero</a></li>
+                    <li><a href="gestion.html"> Gestión de Órdenes</a></li>
+                </ul>
+            </nav>
+            <button class="logout-btn" onclick="cerrarSesion()" style="margin-top: 20px; width: 100%; cursor: pointer;">Cerrar Sesión</button>
+        </aside>
+
+        <main class="content">
+            <div class="form-container">
+                <h1>GESTIÓN DE ÓRDENES DE SERVICIO</h1>
+
+                <div class="modulo">
+                    <div class="grid-container">
+                        <input type="text" id="filtroFolio" placeholder="Buscar por folio...">
+                        <select id="filtroArea">
+                            <option value="">Todas las áreas</option>
+                            <option value="medicina_interna">Medicina Interna</option>
+                            <option value="urgencias">Urgencias</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="modulo">
+                    <div id="estadoCarga" style="padding: 10px;">Cargando órdenes...</div>
+                    <table class="tabla-ordenes" id="tablaOrdenesContainer" style="display:none;">
+                        <thead>
+                            <tr>
+                                <th>Folio</th>
+                                <th>Fecha</th>
+                                <th>Solicitante</th>
+                                <th>Área</th>
+                                <th>Descripción</th>
+                                <th>Recibe Trabajo</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaOrdenes">
+                            <!-- Filas inyectadas por app.js -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script type="module" src="app.js"></script>
+</body>
+</html>

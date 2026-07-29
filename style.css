@@ -1,89 +1,298 @@
-/* 1. RESET Y FUENTES: Cambiamos Segoe UI por Poppins */
+/* 1. RESET Y FUENTES */
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    /* Usamos Poppins con una alternativa por si acaso */
-    font-family: 'Poppins', sans-serif;
+    font-family: 'Archivo Narrow', sans-serif;
 }
 
-/* 2. ESTRUCTURA DE PANTALLA: Fondo un poco más tecnológico */
+/* 2. ESTRUCTURA GLOBAL (Dashboard Layout) */
 body {
-    background-color: #f4f7f6; 
+    background-color: #f4f7f6;
+    min-height: 100vh;
+    margin: 0;
+    padding: 0; /* Quitamos el padding del body para que la barra lateral pegue al borde */
+}
+
+/* --- Layout de dos columnas --- */
+.dashboard-wrapper {
+    display: flex;
+    min-height: 100vh;
+}
+
+.sidebar {
+    width: 250px;
+    background: #6fc6de;
+    color: rgb(10, 0, 35);
+    padding: 20px;
+    flex-shrink: 0; /* Evita que la barra se encoja */
+    display: flex;
+    flex-direction: column;
+}
+
+.content {
+    flex-grow: 1;
+    padding: 20px; /* Aquí ponemos el espacio que quitamos del body */
+    overflow-y: auto;
+}
+
+/* 3. ESTILOS DE LOGIN (CENTRADOS) */
+.login-page {
     display: flex;
     justify-content: center;
     align-items: center;
     height: 100vh;
+    padding: 20px; /* Recuperamos el padding aquí */
 }
 
-/* 3. CONTENEDOR DEL LOGIN: Añadimos un poco más de aire */
 .login-container {
-    background: white;
-    padding: 2.5rem;
-    border-radius: 15px; /* Bordes más redondeados dan un aspecto más moderno */
-    box-shadow: 0 10px 30px rgba(0,0,0,0.08); /* Sombra más suave */
-    width: 100%;
-    max-width: 380px; 
-    text-align: center;
-}
-
-/* 4. TÍTULOS: Poppins se ve genial aquí */
-h1 {
-    font-size: 1.2rem;
-    color: #2d3436;
-    margin-bottom: 0.5rem;
-    font-weight: 600; /* Peso extra para los títulos */
-}
-
-.acceso-restringido {
-    color: #636e72; /* Un gris oscuro en lugar de rojo, se ve más elegante */
-    font-weight: 400;
-    margin-bottom: 1.5rem;
-    font-size: 0.85rem;
-    letter-spacing: 1px; /* Espaciado entre letras para un look premium */
-}
-
-/* 5. INPUTS: Bordes más sutiles */
-input {
-    width: 100%;
-    padding: 14px;
-    margin-bottom: 1rem;
-    border: 1px solid #dfe6e9;
-    border-radius: 8px;
-    font-size: 0.95rem;
-    background-color: #fcfcfc;
-}
-
-/* 6. BOTÓN: Estilo con mejor contraste */
-button {
-    width: 100%;
-    padding: 14px;
-    background-color: #0984e3; /* Un azul vibrante */
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-size: 1rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease; /* Transición más suave */
-}
-
-button:hover {
-    background-color: #74b9ff;
-    transform: translateY(-2px); /* Un pequeño efecto de elevación al pasar el mouse */
-}
-
-.dashboard-page {
-    display: block; /* Deja de ser centrado */
-    padding: 2rem;
-}
-
-.form-container {
     background: white;
     padding: 2.5rem;
     border-radius: 15px;
     box-shadow: 0 10px 30px rgba(0,0,0,0.08);
-    width: 90%;          /* Ocupa casi todo el ancho disponible */
-    max-width: 600px;    /* Un poco más ancho que el login */
-    margin: 20px auto;   /* Margen para que no pegue con los bordes */
+    width: 100%;
+    max-width: 380px;
+    text-align: center;
+}
+
+/* 4. FORMULARIO */
+.form-container label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #636e72;
+    margin-bottom: 5px;
+}
+
+.modulo {
+    background: #ffffff;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    border-radius: 12px;
+    border: 1px solid #eef2f3;
+}
+
+.modulo h2 {
+    font-size: 0.9rem;
+    color: #0984e3;
+    margin-bottom: 1rem;
+    text-transform: uppercase;
+    border-bottom: 2px solid #f1f2f6;
+    padding-bottom: 0.5rem;
+}
+
+.grid-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+}
+
+.full-width {
+    grid-column: 1 / -1;
+}
+
+/* 5. INPUTS Y BOTONES */
+input, select, textarea {
+    width: 100%;
+    padding: 14px;
+    margin-bottom: 0.5rem;
+    border: 1px solid #dfe6e9;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    background-color: #fcfcfc;
+    transition: border-color 0.2s ease;
+}
+
+input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: #5ea4ea;
+}
+
+
+button {
+    background-color: #5ea4ea;
+    color: white;
+    border: none;
+    width: 100%;
+    max-width: 300px;
+    margin: 20px auto;
+    display: block;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+button:hover {
+    background-color: #74b9ff;
+    transform: translateY(-2px);
+}
+
+/* Estado deshabilitado: feedback visual mientras se guarda */
+button:disabled {
+    background-color: #b2bec3;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* 6. OTROS */
+h1 {
+    text-align: center;
+    font-size: 1.2rem;
+    margin-bottom: 1.5rem;
+    color: #2d3436;
+}
+
+.radio-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* 2 columnas para los radios */
+    gap: 10px;
+    background: #f9f9f9;
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid #dfe6e9;
+}
+
+.field-wrapper {
+    display: flex;
+    flex-direction: column; /* label arriba, input abajo */
+    gap: 5px;
+}
+
+/* --- AJUSTES PARA EL FORMULARIO INTEGRADO --- */
+.form-container {
+    width: 100%;
+    max-width: 900px;
+    margin: 0 auto;
+    background: #ffffff;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+}
+
+#guardarBtn {
+    max-width: 100%;
+    padding: 15px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+/* --- SIDEBAR --- */
+.sidebar h2 {
+    margin-bottom: 1.5rem;
+}
+
+.sidebar nav {
+    flex-grow: 1;
+}
+
+.sidebar nav ul {
+    list-style: none;
+}
+
+.sidebar nav ul li {
+    margin-bottom: 10px;
+}
+
+.sidebar nav ul li a {
+    color: rgb(10, 0, 35);
+    text-decoration: none;
+    font-weight: 600;
+    display: block;
+    padding: 10px;
+    border-radius: 5px;
+    transition: background-color 0.2s ease;
+}
+
+.sidebar nav ul li a:hover {
+    background: rgba(255,255,255,0.3);
+}
+
+/* Página activa dentro del sidebar */
+.sidebar nav ul li a.active {
+    background: rgba(255,255,255,0.5);
+    font-weight: 700;
+}
+
+/* Botón de cerrar sesión con su propio estilo, separado del button global */
+.logout-btn {
+    background-color: #ff7675;
+    color: white;
+    border: none;
+    width: 100%;
+    max-width: none;
+    margin: 20px 0 0 0;
+    padding: 12px;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.logout-btn:hover {
+    background-color: #e17055;
+    transform: none;
+}
+
+textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+/* 7. TABLA DE GESTIÓN DE ÓRDENES */
+.tabla-ordenes {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.tabla-ordenes th {
+    background-color: #f4f7f6;
+    color: #0984e3;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    text-align: left;
+    padding: 12px;
+    border-bottom: 2px solid #dfe6e9;
+}
+
+.tabla-ordenes td {
+    padding: 12px;
+    border-bottom: 1px solid #eef2f3;
+    color: #2d3436;
+}
+
+.tabla-ordenes tbody tr:hover {
+    background-color: #f9f9f9;
+}
+
+/* 8. RESPONSIVE (celular / tablet) */
+@media (max-width: 768px) {
+    .dashboard-wrapper {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        width: 100%;
+    }
+
+    .form-container {
+        padding: 1.25rem;
+    }
+
+    .grid-container {
+        grid-template-columns: 1fr;
+    }
+
+    .radio-group {
+        grid-template-columns: 1fr;
+    }
+
+    .tabla-ordenes {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
 }
