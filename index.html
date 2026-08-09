@@ -15,9 +15,11 @@
         <h1>DEPARTAMENTO DE INGENIERÍA BIOMÉDICA</h1>
         <p class="acceso-restringido">ACCESO RESTRINGIDO</p>
         
-        <input type="email" id="email" placeholder="Correo Electrónico">
-        <input type="password" id="password" placeholder="Contraseña">
-        <button id="loginBtn">Ingresar</button>
+        <form id="loginForm">
+            <input type="email" id="email" placeholder="Correo Electrónico" autocomplete="username">
+            <input type="password" id="password" placeholder="Contraseña" autocomplete="current-password">
+            <button id="loginBtn" type="submit">Ingresar</button>
+        </form>
     </div>
 
     <script type="module" src="app.js"></script>
