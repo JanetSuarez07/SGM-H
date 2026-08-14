@@ -1,4 +1,4 @@
-//carga ps ya q 
+//carga mod1
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
 import { getFirestore, collection, addDoc, getDocs, query, orderBy, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
@@ -486,7 +486,7 @@ async function generarWordOrden(data) {
     // Nombre del Solicitante y Área: proporcionales (37% cada uno)
     // Día, Mes, Año: 8% + 8% + 10% = 26% (esto es exactamente lo que debe medir el Folio)
     const ANCHO_NOMBRE = 37;
-    const ANCHO_AREA = 37;
+    const ANCHO_AREA = 40;
     const ANCHO_DIA = 8;
     const ANCHO_MES = 8;
     const ANCHO_ANIO = 10;
