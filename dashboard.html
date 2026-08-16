@@ -14,8 +14,9 @@
             <h2>SGM-H</h2>
             <nav>
                 <ul>
-                    <li><a href="dashboard.html"> Tablero</a></li>
+                    <li><a href="dashboard.html" class="active"> Tablero</a></li>
                     <li><a href="gestion.html"> Gestión de Órdenes</a></li>
+                    <li><a href="reportes.html"> Descargar por Fechas</a></li>
                 </ul>
             </nav>
             <button class="logout-btn" onclick="cerrarSesion()" style="margin-top: 20px; width: 100%; cursor: pointer;">Cerrar Sesión</button>
@@ -39,21 +40,41 @@
                     <div class="grid-container">
                         <input list="lista_solicitantes" id="solicitante_nombre" placeholder="Nombre del Solicitante">
                         <datalist id="lista_solicitantes">
-                            <option value="Dra. María González">
-                            <option value="Lic. Pedro Ruiz">
-                            <option value="Jefe Enf. Ana López">
+                            <option value="Maritza Paola Reyes Anguiano">
+                            <option value="María Isabel Flores Dorado">
+                            <option value="Ma. Evangelina García Franco">
+                            <option value="Maritza Paola Reyes Anguiano">
+                            <option value="Mónica Martínez Topete">
+                            <option value="Laura Angélica Calzada Chaves">
+                            <option value="Diana Yadira Caudillo Ramos">
+                            <option value="Blanca Esthela Esparza Llamas">
+                            <option value="Dr. David Mendoza Alvarado">
+                            <option value="No aplica">
                         </datalist>
 
                         <select id="area">
-                            <option value="">Seleccione Área</option>
+                            <option value="urgencias_adultos">Urgencias Adultos</option>
+                            <option value="urgencias_pediatricas">Urgencias Pediátricas</option>
                             <option value="medicina_interna">Medicina Interna</option>
-                            <option value="urgencias">Urgencias</option>
+                            <option value="cirugia">Cirugía</option>
+                            <option value="quirofano">Quirófano</option>
+                            <option value="ceye">CEyE</option>
+                            <option value="terapia_adultos">Terapia Adultos</option>
+                            <option value="ucip">UCIP</option>
+                            <option value="pediatria">Pediatría</option>
+                            <option value="traumatologia">Traumatología</option>
+                            <option value="rehabilitacion">Rehabilitación</option>
+                            <option value="imagenologia">Imagenología</option>
+                            <option value="laboratorio">Laboratorio</option>
+                            <option value="consulta_externa">Consulta Externa</option>
+                            <option value="hospitalizacion">Hospitalización</option>
+                            <option value="departamento_biomedico">Departamento Biomédico</option>
                         </select>
-                        
+
                         <textarea id="descripcion_problema" class="full-width" placeholder="Descripción del Trabajo Requerido"></textarea>
                         <textarea id="trabajo_realizado" class="full-width" placeholder="Descripción del Trabajo Realizado"></textarea>
                         <textarea id="refacciones_usadas" class="full-width" placeholder="Refacciones, Accesorios y/o Químicos Utilizados"></textarea>
-                        <textarea id="observaciones" class="full-width" placeholder="Observaciones"></textarea>
+                        <textarea id="observaciones_inf" class="full-width" placeholder="Observaciones"></textarea>
                     </div>
                 </div>
 

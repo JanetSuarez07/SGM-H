@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SGM-H | Descargar Órdenes por Fecha</title>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo+Narrow:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="dashboard-wrapper">
+        <aside class="sidebar">
+            <h2>SGM-H</h2>
+            <nav>
+                <ul>
+                    <li><a href="dashboard.html"> Tablero</a></li>
+                    <li><a href="gestion.html"> Gestión de Órdenes</a></li>
+                    <li><a href="reportes.html" class="active"> Descargar por Fechas</a></li>
+                </ul>
+            </nav>
+            <button class="logout-btn" onclick="cerrarSesion()" style="margin-top: 20px; width: 100%; cursor: pointer;">Cerrar Sesión</button>
+        </aside>
+
+        <main class="content">
+            <div class="form-container">
+                <h1>DESCARGAR ÓRDENES POR FECHA</h1>
+
+                <div class="modulo">
+                    <h2>Rango de fechas</h2>
+                    <div class="grid-container">
+                        <div class="field-wrapper">
+                            <label for="filtroFechaInicio">Fecha de inicio</label>
+                            <input type="date" id="filtroFechaInicio">
+                        </div>
+                        <div class="field-wrapper">
+                            <label for="filtroFechaFin">Fecha de término</label>
+                            <input type="date" id="filtroFechaFin">
+                        </div>
+                    </div>
+
+                    <button type="button" id="generarCSVBtn">Generar CSV</button>
+                    <p id="resultadoCSV" style="text-align:center; color:#0984e3;"></p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script type="module" src="app.js"></script>
+</body>
+</html>

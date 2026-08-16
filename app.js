@@ -1,10 +1,11 @@
-//carga mod1
+// ULTIMA CARGA
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
-import { getFirestore, collection, addDoc, getDocs, query, orderBy, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, updateDoc, getDoc, getDocs, query, where, orderBy, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
 import { PDFDocument, rgb } from "https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.esm.js";
 import fontkit from "https://esm.sh/@pdf-lib/fontkit@1.1.1";
-import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, BorderStyle, ImageRun, VerticalMergeType, VerticalAlign, Header } from "https://esm.sh/docx@8.5.0";
+import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, BorderStyle, ImageRun, VerticalMergeType, VerticalAlign, Header, TableLayoutType, HeightRule } from "https://esm.sh/docx@8.5.0";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDUR0GP_8Z48uQQ0XZA86rBl5fqPVmPA68",
@@ -33,6 +34,26 @@ if (loginForm) {
     });
 }
 
+// --- MOSTRAR/OCULTAR CONTRASEÑA (el "ojito") EN EL LOGIN ---
+const togglePasswordBtn = document.getElementById("togglePassword");
+if (togglePasswordBtn) {
+    togglePasswordBtn.addEventListener("click", () => {
+        const passwordInput = document.getElementById("password");
+        const iconoOjo = togglePasswordBtn.querySelector(".icon-eye");
+        const iconoOjoTachado = togglePasswordBtn.querySelector(".icon-eye-off");
+
+        const seEstaMostrando = passwordInput.type === "text";
+
+        passwordInput.type = seEstaMostrando ? "password" : "text";
+        togglePasswordBtn.setAttribute("aria-label", seEstaMostrando ? "Mostrar contraseña" : "Ocultar contraseña");
+
+        if (iconoOjo && iconoOjoTachado) {
+            iconoOjo.style.display = seEstaMostrando ? "block" : "none";
+            iconoOjoTachado.style.display = seEstaMostrando ? "none" : "block";
+        }
+    });
+}
+
 // ---  CERRAR SESIÓN ---
 // La hacemos accesible al HTML mediante 'window'
 window.cerrarSesion = () => {
@@ -47,8 +68,22 @@ window.cerrarSesion = () => {
 // Si agregas más áreas al <select id="area"> en el HTML, agrégalas también aquí.
 function formatearArea(valor) {
     const mapaAreas = {
+        urgencias_adultos: "Urgencias Adultos",
+        urgencias_pediatricas: "Urgencias Pediátricas",
         medicina_interna: "Medicina Interna",
-        urgencias: "Urgencias"
+        cirugia: "Cirugía",
+        quirofano: "Quirófano",
+        ceye: "CEyE",
+        terapia_adultos: "Terapia Adultos",
+        ucip: "UCIP",
+        pediatria: "Pediatría",
+        traumatologia: "Traumatología",
+        rehabilitacion: "Rehabilitación",
+        imagenologia: "Imagenología",
+        laboratorio: "Laboratorio",
+        consulta_externa: "Consulta Externa",
+        hospitalizacion: "Hospitalización",
+        departamento_biomedico: "Departamento Biomédico"
     };
     return mapaAreas[valor] ?? valor ?? "";
 }
@@ -74,11 +109,22 @@ if (tablaOrdenesBody) {
                 <td>${data.solicitante ?? ""}</td>
                 <td>${formatearArea(data.area)}</td>
                 <td>
+                    <button type="button" class="btn-corregir-fila" style="background-color:#f0ad4e; color:white;">Corregir</button>
                     <button type="button" class="btn-pdf-fila">Descargar PDF</button>
                     <button type="button" class="btn-word-fila">Descargar Word</button>
                     <button type="button" class="btn-eliminar-fila" style="background-color:#e03538; color:white;">Eliminar</button>
                 </td>
             `;
+
+            // Botón: Corregir esta orden (te manda al formulario con los datos ya cargados)
+            const btnCorregirFila = fila.querySelector(".btn-corregir-fila");
+            btnCorregirFila.addEventListener("click", () => {
+                // Guardamos el ID de la orden que se va a corregir para que el formulario
+                // sepa que debe cargar estos datos y, al guardar, actualizar en vez de crear una nueva.
+                localStorage.setItem("ordenEditandoId", data.id);
+                // OJO: Ajusta "dashboard.html" si tu formulario de captura vive en otro archivo.
+                window.location.href = "dashboard.html";
+            });
 
             // Botón: Descargar PDF de esta orden
             const btnPdfFila = fila.querySelector(".btn-pdf-fila");
@@ -167,6 +213,121 @@ if (tablaOrdenesBody) {
     cargarOrdenes();
 }
 
+// --- SECCIÓN: EXPORTAR ÓRDENES A CSV POR RANGO DE FECHAS ---
+// Pensado para una página/apartado nuevo (ej. "reportes.html"), con estos elementos en el HTML:
+//   <input type="date" id="filtroFechaInicio">
+//   <input type="date" id="filtroFechaFin">
+//   <button type="button" id="generarCSVBtn">Generar CSV</button>
+//   <p id="resultadoCSV"></p>   (opcional, para mostrar cuántas órdenes se encontraron)
+const generarCSVBtn = document.getElementById("generarCSVBtn");
+if (generarCSVBtn) {
+
+    // Convierte un valor a texto seguro para CSV: si contiene comas, comillas o saltos de
+    // línea, lo envuelve entre comillas dobles y escapa las comillas internas duplicándolas.
+    function escaparCampoCSV(valor) {
+        const texto = String(valor ?? "");
+        if (/[",\n]/.test(texto)) {
+            return `"${texto.replace(/"/g, '""')}"`;
+        }
+        return texto;
+    }
+
+    // Reconstruye una fecha real (objeto Date) a partir de los campos dia/mes/anio que ya
+    // guarda cada orden, para poder comparar fechas de forma confiable (el campo "fecha" es
+    // solo texto tipo "13/8/2026" y no sirve para comparar rangos).
+    function construirFechaDeOrden(data) {
+        const dia = parseInt(data.dia, 10);
+        const mes = parseInt(data.mes, 10);
+        const anio = parseInt(data.anio, 10);
+        if (!dia || !mes || !anio) return null;
+        return new Date(anio, mes - 1, dia);
+    }
+
+    generarCSVBtn.addEventListener("click", async () => {
+        const inicioInput = document.getElementById("filtroFechaInicio");
+        const finInput = document.getElementById("filtroFechaFin");
+        const resultadoEl = document.getElementById("resultadoCSV");
+
+        const fechaInicioValor = inicioInput?.value; // formato "YYYY-MM-DD" (nativo de <input type="date">)
+        const fechaFinValor = finInput?.value;
+
+        if (!fechaInicioValor || !fechaFinValor) {
+            alert("Selecciona una fecha de inicio y una fecha de término.");
+            return;
+        }
+
+        const fechaInicio = new Date(fechaInicioValor + "T00:00:00");
+        const fechaFin = new Date(fechaFinValor + "T23:59:59");
+
+        if (fechaInicio > fechaFin) {
+            alert("La fecha de inicio no puede ser posterior a la fecha de término.");
+            return;
+        }
+
+        try {
+            // Traemos todas las órdenes y filtramos aquí mismo en el navegador (ver nota arriba
+            // sobre por qué no se puede filtrar directamente en la consulta a Firestore).
+            const snapshot = await getDocs(collection(db, "ordenes"));
+            const ordenes = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+
+            const ordenesFiltradas = ordenes.filter((data) => {
+                const fechaOrden = construirFechaDeOrden(data);
+                return fechaOrden && fechaOrden >= fechaInicio && fechaOrden <= fechaFin;
+            });
+
+            if (ordenesFiltradas.length === 0) {
+                alert("No se encontraron órdenes en ese rango de fechas.");
+                if (resultadoEl) resultadoEl.textContent = "0 órdenes encontradas.";
+                return;
+            }
+
+            // De la más antigua a la más reciente, para que el CSV se lea en orden cronológico
+            ordenesFiltradas.sort((a, b) => construirFechaDeOrden(a) - construirFechaDeOrden(b));
+
+            const fechaInicioTexto = fechaInicio.toLocaleDateString('es-MX');
+            const fechaFinTexto = fechaFin.toLocaleDateString('es-MX');
+
+            const encabezados = [
+                "Folio", "Fecha", "Hora", "Solicitante", "Área",
+                "Descripción del Trabajo Requerido", "Trabajo Realizado",
+                "Refacciones/Accesorios/Químicos", "Estado del Equipo (Antes)",
+                "Tipo de Mantenimiento", "Recibe Orden", "Jefe de Taller",
+                "Realiza Trabajo", "Recibe Trabajo", "Observaciones",
+            ];
+
+            const filasCSV = [];
+            filasCSV.push(escaparCampoCSV(`REGISTRO DE ÓRDENES DE SERVICIO DEL ${fechaInicioTexto} AL ${fechaFinTexto}`));
+            filasCSV.push(escaparCampoCSV(`Número de órdenes: ${ordenesFiltradas.length}`));
+            filasCSV.push(""); // fila en blanco antes de la tabla de datos
+            filasCSV.push(encabezados.map(escaparCampoCSV).join(","));
+
+            ordenesFiltradas.forEach((data) => {
+                const fila = [
+                    data.folio, data.fecha, data.hora, data.solicitante, formatearArea(data.area),
+                    data.descripcion, data.trabajo_realizado, data.refacciones_usadas,
+                    data.estado_antes, data.tipo_mtt, data.recibe_orden, data.jefe_taller,
+                    data.realiza_trabajo, data.recibe_trabajo, data.observaciones,
+                ].map(escaparCampoCSV).join(",");
+                filasCSV.push(fila);
+            });
+
+            // El BOM (\uFEFF) al inicio hace que Excel reconozca los acentos (á, é, í, ó, ú, ñ) bien
+            const contenidoCSV = "\uFEFF" + filasCSV.join("\n");
+            const blob = new Blob([contenidoCSV], { type: "text/csv;charset=utf-8;" });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `Registro_Ordenes_${fechaInicioValor}_a_${fechaFinValor}.csv`;
+            link.click();
+
+            if (resultadoEl) resultadoEl.textContent = `${ordenesFiltradas.length} orden(es) encontradas y exportadas.`;
+
+        } catch (e) {
+            console.error("Error al generar el CSV: ", e);
+            alert("Hubo un error al generar el archivo CSV.");
+        }
+    });
+}
+
 // Sincronizar solicitante
 const solInput = document.getElementById("solicitante_nombre");
 if (solInput) {
@@ -191,6 +352,101 @@ if (campoFecha && campoHora) {
 if (campoFolio && !campoFolio.value) {
     campoFolio.value = "IBM-";
 }
+
+// --- SUGERIR AUTOMÁTICAMENTE EL SIGUIENTE FOLIO (último número registrado + 1) ---
+// El usuario sigue pudiendo editarlo libremente; esto solo prellena el campo.
+// Si estamos en "modo corrección" (llegamos aquí con el botón "Corregir" de Gestión),
+// NO tocamos el folio: cargarOrdenParaEditar() más abajo se encarga de poner el folio
+// real de esa orden, y no queremos que esta sugerencia se lo pise.
+async function inicializarFolioSugerido() {
+    if (!campoFolio) return;
+    if (localStorage.getItem("ordenEditandoId")) return; // estamos corrigiendo una orden, no sugerir folio nuevo
+
+    try {
+        const snapshot = await getDocs(collection(db, "ordenes"));
+        let mayorNumero = 0;
+
+        snapshot.forEach((docSnap) => {
+            const folioGuardado = (docSnap.data().folio ?? "").trim();
+            if (!folioGuardado) return;
+
+            // Extrae el número al final del folio (ej. "IBM-89" -> 89, "IBM-2222" -> 2222)
+            const coincidencia = folioGuardado.match(/(\d+)\s*$/);
+            if (coincidencia) {
+                const numero = parseInt(coincidencia[1], 10);
+                if (numero > mayorNumero) mayorNumero = numero;
+            }
+        });
+
+        // Solo sugerimos un número si SÍ hay órdenes registradas con folio numérico.
+        // Si no hay ninguna, dejamos el campo tal cual ("IBM-"), sin inventar un número.
+        if (mayorNumero > 0) {
+            campoFolio.value = `IBM-${mayorNumero + 1}`;
+        }
+    } catch (e) {
+        console.error("Error al calcular el siguiente folio: ", e);
+        // Si falla la consulta, dejamos el folio como estaba ("IBM-") y no bloqueamos el formulario.
+    }
+}
+
+inicializarFolioSugerido();
+
+// --- MODO CORRECCIÓN: SI VENIMOS DEL BOTÓN "CORREGIR" DE LA TABLA DE GESTIÓN ---
+// Guarda en esta variable el ID de la orden que se está corrigiendo (si aplica).
+// Mientras tenga un valor, el botón "Guardar" actualizará esa orden en Firestore
+// en vez de crear una nueva.
+let ordenEditandoId = null;
+
+async function cargarOrdenParaEditar() {
+    const idAEditar = localStorage.getItem("ordenEditandoId");
+    if (!idAEditar || !campoFolio) return; // no hay nada que editar, o no estamos en el formulario
+
+    try {
+        const refOrden = doc(db, "ordenes", idAEditar);
+        const snap = await getDoc(refOrden);
+
+        if (!snap.exists()) {
+            alert("No se encontró la orden que intentas corregir (puede que ya haya sido eliminada).");
+            localStorage.removeItem("ordenEditandoId");
+            return;
+        }
+
+        const data = snap.data();
+        ordenEditandoId = idAEditar;
+
+        // Rellenamos todos los campos del formulario con los datos guardados
+        if (document.getElementById("folio")) document.getElementById("folio").value = data.folio ?? "";
+        if (document.getElementById("fecha")) document.getElementById("fecha").value = data.fecha ?? "";
+        if (document.getElementById("hora")) document.getElementById("hora").value = data.hora ?? "";
+        if (document.getElementById("solicitante_nombre")) document.getElementById("solicitante_nombre").value = data.solicitante ?? "";
+        if (document.getElementById("area")) document.getElementById("area").value = data.area ?? "";
+        if (document.getElementById("descripcion_problema")) document.getElementById("descripcion_problema").value = data.descripcion ?? "";
+        if (document.getElementById("trabajo_realizado")) document.getElementById("trabajo_realizado").value = data.trabajo_realizado ?? "";
+        if (document.getElementById("refacciones_usadas")) document.getElementById("refacciones_usadas").value = data.refacciones_usadas ?? "";
+        if (document.getElementById("recibe_orden")) document.getElementById("recibe_orden").value = data.recibe_orden ?? "";
+        if (document.getElementById("jefe_taller")) document.getElementById("jefe_taller").value = data.jefe_taller ?? "";
+        if (document.getElementById("realiza_trabajo")) document.getElementById("realiza_trabajo").value = data.realiza_trabajo ?? "";
+        if (document.getElementById("recibe_trabajo")) document.getElementById("recibe_trabajo").value = data.recibe_trabajo ?? "";
+        if (document.getElementById("observaciones_inf")) document.getElementById("observaciones_inf").value = data.observaciones ?? "";
+
+        document.querySelectorAll('input[name="estado_antes"]').forEach((radio) => {
+            radio.checked = (radio.value === data.estado_antes);
+        });
+        document.querySelectorAll('input[name="tipo_mtt"]').forEach((radio) => {
+            radio.checked = (radio.value === data.tipo_mtt);
+        });
+
+        // Avisamos visualmente que estamos corrigiendo, no creando una orden nueva
+        const guardarBtnRef = document.getElementById("guardarBtn");
+        if (guardarBtnRef) guardarBtnRef.textContent = "Actualizar Orden";
+
+    } catch (e) {
+        console.error("Error al cargar la orden para corregir: ", e);
+        alert("Hubo un error al cargar la orden para corregir.");
+    }
+}
+
+cargarOrdenParaEditar();
 
 // --- FUNCIÓN TEMPORAL: GENERA LA PLANTILLA CON CUADRÍCULA PARA CALIBRAR COORDENADAS ---
 // Esta función es solo para ayudarte a encontrar las coordenadas (x, y) exactas.
@@ -295,15 +551,43 @@ function capturarDatosFormulario() {
     };
 }
 
+// --- VERIFICA SI UN FOLIO YA EXISTE EN OTRA ORDEN ---
+// idAExcluir: cuando estamos corrigiendo una orden, no queremos que se compare contra sí misma.
+async function folioYaExiste(folio, idAExcluir = null) {
+    const q = query(collection(db, "ordenes"), where("folio", "==", folio));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.some((docSnap) => docSnap.id !== idAExcluir);
+}
+
 // ---  BOTÓN GUARDAR EN FIREBASE ---
 const guardarBtn = document.getElementById("guardarBtn");
 if (guardarBtn) {
     guardarBtn.addEventListener("click", async () => {
         const ordenData = capturarDatosFormulario();
 
+        if (!ordenData.folio || ordenData.folio === "IBM-") {
+            alert("Por favor ingresa un número de folio válido antes de guardar.");
+            return;
+        }
+
         try {
-            await addDoc(collection(db, "ordenes"), ordenData);
-            alert("Orden guardada exitosamente en la base de datos");
+            const yaExiste = await folioYaExiste(ordenData.folio, ordenEditandoId);
+            if (yaExiste) {
+                alert(`El folio "${ordenData.folio}" ya existe en otra orden. Usa un folio diferente.`);
+                return;
+            }
+
+            if (ordenEditandoId) {
+                // Modo corrección: actualizamos la orden existente en vez de crear una nueva
+                await updateDoc(doc(db, "ordenes", ordenEditandoId), ordenData);
+                alert("Orden corregida exitosamente.");
+                localStorage.removeItem("ordenEditandoId");
+                ordenEditandoId = null;
+                guardarBtn.textContent = "Guardar";
+            } else {
+                await addDoc(collection(db, "ordenes"), ordenData);
+                alert("Orden guardada exitosamente en la base de datos");
+            }
         } catch (e) {
             console.error("Error al guardar: ", e);
             alert("Hubo un error al guardar, intenta de nuevo.");
@@ -367,6 +651,12 @@ if (limpiarBtn) {
         document.querySelectorAll('input[name="estado_antes"]').forEach(radio => radio.checked = false);
         document.querySelectorAll('input[name="tipo_mtt"]').forEach(radio => radio.checked = false);
 
+        // Si estábamos corrigiendo una orden, "Limpiar" también cancela ese modo
+        // y regresa el formulario a "orden nueva".
+        localStorage.removeItem("ordenEditandoId");
+        ordenEditandoId = null;
+        if (guardarBtn) guardarBtn.textContent = "Guardar";
+
         alert("Formulario limpiado correctamente.");
     });
 }
@@ -379,26 +669,23 @@ async function generarWordOrden(data) {
     const logoBiomedicaBytes = await fetch("logo_biomedica.png").then(res => res.arrayBuffer());
     const logoHospitalBytes = await fetch("logo_hospital.png").then(res => res.arrayBuffer());
 
-    // --- CALCULAR EL TAMAÑO DE CADA LOGO RESPETANDO SU PROPORCIÓN REAL ---
-    // Antes forzábamos ancho y alto fijos (por eso se veían "estirados"/deformados).
-    // Ahora leemos las dimensiones reales de cada imagen y solo fijamos una altura
-    // común para los 3 logos; el ancho se calcula automáticamente para que no se deforme.
+    // --- CALCULAR EL TAMAÑO DE CADA LOGO RESPETANDO SU PROPORCIÓN REAL (sin distorsión) ---
     async function calcularTamanoLogo(bytes, alturaObjetivoPx) {
         const bitmap = await createImageBitmap(new Blob([bytes]));
         const escala = alturaObjetivoPx / bitmap.height;
         return { width: Math.round(bitmap.width * escala), height: alturaObjetivoPx };
     }
 
-    const ALTURA_LOGO_PX = 45; // mismo alto para los 3, así quedan alineados en la fila
+    const ALTURA_LOGO_PX = 65;
     const dimGigante = await calcularTamanoLogo(logoGiganteBytes, ALTURA_LOGO_PX);
     const dimBiomedica = await calcularTamanoLogo(logoBiomedicaBytes, ALTURA_LOGO_PX);
     const dimHospital = await calcularTamanoLogo(logoHospitalBytes, ALTURA_LOGO_PX);
 
     // --- TAMAÑO DE FUENTE ---
-    const SIZE_NORMAL = 22;  // 11pt (docx mide en medios puntos: 22 / 2 = 11)
-    const SIZE_FIRMAS = 18;  // 9pt, solo para el texto que escribe el usuario en la fila de firmas
+    const SIZE_NORMAL = 22;  // 11pt
+    const SIZE_FIRMAS = 18;  // 9pt
 
-    // Helper para bordes estándar de celdas (líneas negras finas)
+    // Bordes estándar de celdas
     const bordeDelgado = { style: BorderStyle.SINGLE, size: 4, color: "000000" };
     const bordersTabla = {
         top: bordeDelgado,
@@ -409,14 +696,39 @@ async function generarWordOrden(data) {
         insideVertical: bordeDelgado,
     };
 
-    // --- Helpers para celdas (fondo blanco limpio, sin grises) ---
-    const celdaTitulo = (texto, widthPct, opciones = {}) =>
+    // --- ANCHOS EN TWIPS (1440 twips = 1 pulgada). Ancho útil de la hoja = 10240 twips ---
+    const ANCHO_TABLA = 10240;
+    const NOMBRE_DXA = 3400;
+    const AREA_DXA = 3400;
+    const DIA_DXA = 1000;
+    const MES_DXA = 1000;
+    const ANIO_DXA = 1440;
+    const TITULO_DXA = NOMBRE_DXA + AREA_DXA;                 // 6800
+    const FOLIO_DXA = DIA_DXA + MES_DXA + ANIO_DXA;           // 3440 (idéntico a Día+Mes+Año)
+    const MITAD_DXA = ANCHO_TABLA / 2;                        // 5120
+    const CUARTO_DXA = ANCHO_TABLA / 4;                       // 2560
+
+    // Un separador "invisible" entre tablas: no deja espacio visible pero
+    // es válido tenerlo entre dos tablas consecutivas en un documento Word.
+    const separadorInvisible = () => new Paragraph({
+        spacing: { before: 0, after: 0, line: 20 },
+        children: [new TextRun({ text: "", size: 2 })],
+    });
+
+    // Bordes sin línea superior: se usan en la primera fila de cada tabla (excepto la primera
+    // del documento) para que no se dibuje una doble línea justo donde termina la tabla anterior
+    // y empieza la siguiente. Así todas las secciones se ven como una sola tabla continua.
+    const bordeNinguno = { style: BorderStyle.NONE, size: 0, color: "FFFFFF" };
+    const bordersSinTop = { ...bordersTabla, top: bordeNinguno };
+
+    // --- Helpers para celdas ---
+    const celdaTitulo = (texto, anchoDxa, opciones = {}) =>
         new TableCell({
-            width: { size: widthPct, type: WidthType.PERCENTAGE },
+            width: { size: anchoDxa, type: WidthType.DXA },
             verticalAlign: VerticalAlign.CENTER,
             columnSpan: opciones.colSpan,
             verticalMerge: opciones.verticalMerge,
-            borders: bordersTabla,
+            borders: opciones.borders ?? bordersTabla,
             margins: { top: 100, bottom: 100, left: 100, right: 100 },
             children: [new Paragraph({
                 alignment: AlignmentType.CENTER,
@@ -424,9 +736,9 @@ async function generarWordOrden(data) {
             })],
         });
 
-    const celdaValor = (texto, widthPct, opciones = {}) =>
+    const celdaValor = (texto, anchoDxa, opciones = {}) =>
         new TableCell({
-            width: { size: widthPct, type: WidthType.PERCENTAGE },
+            width: { size: anchoDxa, type: WidthType.DXA },
             verticalAlign: VerticalAlign.CENTER,
             columnSpan: opciones.colSpan,
             verticalMerge: opciones.verticalMerge,
@@ -436,6 +748,53 @@ async function generarWordOrden(data) {
                 alignment: opciones.centrado ? AlignmentType.CENTER : AlignmentType.LEFT,
                 children: [new TextRun({ text: texto || "", size: opciones.size ?? SIZE_NORMAL, font: "Arial" })],
             })],
+        });
+
+    // Celda de checkbox individual: cuadrito arriba (marcado o no) y la etiqueta debajo,
+    // centrado en su propia mini-columna (para que el texto nunca se desborde), pero SIN
+    // caja/borde propio — igual que en la plantilla original. `bordes` indica en cuáles de
+    // los 4 lados sí queremos línea (por ejemplo, solo el borde exterior del bloque y la
+    // línea divisoria entre "Estado" y "Tipo").
+    const celdaCheckbox = (marcado, etiqueta, anchoDxa, bordes = {}) =>
+        new TableCell({
+            width: { size: anchoDxa, type: WidthType.DXA },
+            verticalAlign: VerticalAlign.CENTER,
+            borders: {
+                top: bordes.top ? bordeDelgado : bordeNinguno,
+                bottom: bordes.bottom ? bordeDelgado : bordeNinguno,
+                left: bordes.left ? bordeDelgado : bordeNinguno,
+                right: bordes.right ? bordeDelgado : bordeNinguno,
+            },
+            margins: { top: 80, bottom: 80, left: 40, right: 40 },
+            children: [
+                new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    spacing: { after: 20 },
+                    children: [new TextRun({ text: marcado ? "☒" : "☐", size: 34, font: "Arial" })],
+                }),
+                new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    children: [new TextRun({ text: etiqueta, size: 22, font: "Arial" })],
+                }),
+            ],
+        });
+
+    // Celda de texto grande (descripciones/observaciones) con una altura MÍNIMA garantizada,
+    // para que se vea espaciosa como en la plantilla original, tenga o no mucho texto.
+    const filaTextoGrande = (texto, alturaMinimaTwips) =>
+        new TableRow({
+            height: { value: alturaMinimaTwips, rule: HeightRule.ATLEAST },
+            children: [
+                new TableCell({
+                    width: { size: ANCHO_TABLA, type: WidthType.DXA },
+                    borders: bordersTabla,
+                    margins: { top: 120, bottom: 120, left: 100, right: 100 },
+                    children: [new Paragraph({
+                        alignment: AlignmentType.LEFT,
+                        children: [new TextRun({ text: texto || "", size: SIZE_NORMAL, font: "Arial" })],
+                    })],
+                }),
+            ],
         });
 
     // --- ENCABEZADO REAL DE WORD CON LOS 3 LOGOS ---
@@ -482,16 +841,199 @@ async function generarWordOrden(data) {
         ],
     });
 
-    // --- ANCHOS DE COLUMNA MAESTROS (deben usarse igual en todas las filas que necesiten alinearse) ---
-    // Nombre del Solicitante y Área: proporcionales (37% cada uno)
-    // Día, Mes, Año: 8% + 8% + 10% = 26% (esto es exactamente lo que debe medir el Folio)
-    const ANCHO_NOMBRE = 37;
-    const ANCHO_AREA = 40;
-    const ANCHO_DIA = 8;
-    const ANCHO_MES = 8;
-    const ANCHO_ANIO = 10;
-    const ANCHO_TITULO = ANCHO_NOMBRE + ANCHO_AREA;               // 74
-    const ANCHO_FOLIO = ANCHO_DIA + ANCHO_MES + ANCHO_ANIO;       // 26 (igual a Día+Mes+Año)
+    // --- TABLA 1: Título + Folio + Nombre/Área/Día/Mes/Año (deben compartir cuadrícula) ---
+    const tablaEncabezado = new Table({
+        width: { size: ANCHO_TABLA, type: WidthType.DXA },
+        layout: TableLayoutType.FIXED,
+        rows: [
+            new TableRow({
+                children: [
+                    new TableCell({
+                        width: { size: TITULO_DXA, type: WidthType.DXA },
+                        columnSpan: 2,
+                        verticalMerge: VerticalMergeType.RESTART,
+                        verticalAlign: VerticalAlign.CENTER,
+                        borders: bordersTabla,
+                        margins: { top: 120, bottom: 120, left: 100, right: 100 },
+                        children: [
+                            new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "INSTITUTO GENERAL DE SALUD DEL ESTADO DE AGUASCALIENTES", bold: true, size: SIZE_NORMAL, font: "Arial" })] }),
+                            new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "HOSPITAL GENERAL TERCER MILENIO", bold: true, size: SIZE_NORMAL, font: "Arial" })] }),
+                            new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "DEPARTAMENTO DE INGENIERÍA BIOMÉDICA", bold: true, size: SIZE_NORMAL, font: "Arial" })] }),
+                            new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "ORDEN DE SERVICIO", bold: false, size: SIZE_NORMAL, font: "Arial" })] }),
+                        ],
+                    }),
+                    celdaTitulo("FOLIO", FOLIO_DXA, { colSpan: 3 }),
+                ],
+            }),
+            new TableRow({
+                children: [
+                    new TableCell({
+                        width: { size: TITULO_DXA, type: WidthType.DXA },
+                        columnSpan: 2,
+                        verticalMerge: VerticalMergeType.CONTINUE,
+                        borders: bordersTabla,
+                        children: [new Paragraph({ text: "" })],
+                    }),
+                    celdaValor(data.folio, FOLIO_DXA, { centrado: true, colSpan: 3 }),
+                ],
+            }),
+            new TableRow({
+                children: [
+                    celdaTitulo("NOMBRE DEL SOLICITANTE", NOMBRE_DXA),
+                    celdaTitulo("ÁREA", AREA_DXA),
+                    celdaTitulo("DÍA", DIA_DXA),
+                    celdaTitulo("MES", MES_DXA),
+                    celdaTitulo("AÑO", ANIO_DXA),
+                ],
+            }),
+            new TableRow({
+                children: [
+                    celdaValor(data.solicitante, NOMBRE_DXA),
+                    celdaValor(typeof formatearArea === 'function' ? formatearArea(data.area) : data.area, AREA_DXA),
+                    celdaValor(data.dia, DIA_DXA, { centrado: true }),
+                    celdaValor(data.mes, MES_DXA, { centrado: true }),
+                    celdaValor(data.anio, ANIO_DXA, { centrado: true }),
+                ],
+            }),
+        ],
+    });
+
+    // --- TABLA 2: Descripción del trabajo requerido (independiente, con altura mínima espaciosa) ---
+    const tablaDescReq = new Table({
+        width: { size: ANCHO_TABLA, type: WidthType.DXA },
+        layout: TableLayoutType.FIXED,
+        rows: [
+            new TableRow({ children: [celdaTitulo("DESCRIPCIÓN DEL TRABAJO REQUERIDO", ANCHO_TABLA, { borders: bordersSinTop })] }),
+            filaTextoGrande(data.descripcion, 2000),
+        ],
+    });
+
+    // --- TABLA 3: Descripción del trabajo realizado ---
+    const tablaDescReal = new Table({
+        width: { size: ANCHO_TABLA, type: WidthType.DXA },
+        layout: TableLayoutType.FIXED,
+        rows: [
+            new TableRow({ children: [celdaTitulo("DESCRIPCIÓN DEL TRABAJO REALIZADO", ANCHO_TABLA, { borders: bordersSinTop })] }),
+            filaTextoGrande(data.trabajo_realizado, 2000),
+        ],
+    });
+
+    // --- TABLA 4: Refacciones ---
+    const tablaRefacciones = new Table({
+        width: { size: ANCHO_TABLA, type: WidthType.DXA },
+        layout: TableLayoutType.FIXED,
+        rows: [
+            new TableRow({ children: [celdaTitulo("REFACCIONES, ACCESORIOS Y/O QUÍMICOS UTILIZADOS", ANCHO_TABLA, { borders: bordersSinTop })] }),
+            filaTextoGrande(data.refacciones_usadas, 900),
+        ],
+    });
+
+    // --- TABLA 5: Estado del equipo / Tipo de mantenimiento ---
+    // CORREGIDO: cada opción va en su propia mini-columna (cuadrito arriba, etiqueta abajo)
+    // en vez de un solo bloque de texto por mitad. Así nunca se desborda del borde de la tabla,
+    // igual que en la plantilla de referencia.
+    const ANCHOS_ESTADO = [1707, 1707, 1706];       // 3 columnas -> suman MITAD_DXA (5120)
+    const ANCHOS_TIPO = [1280, 1280, 1280, 1280];   // 4 columnas -> suman MITAD_DXA (5120)
+
+    const tablaEstadoTipo = new Table({
+        width: { size: ANCHO_TABLA, type: WidthType.DXA },
+        layout: TableLayoutType.FIXED,
+        rows: [
+            new TableRow({
+                children: [
+                    new TableCell({
+                        width: { size: MITAD_DXA, type: WidthType.DXA },
+                        columnSpan: 3,
+                        borders: bordersSinTop,
+                        margins: { top: 100, bottom: 100, left: 50, right: 50 },
+                        children: [
+                            new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "ESTADO DEL EQUIPO Y/O ACCESORIO", bold: true, size: SIZE_NORMAL, font: "Arial" })] }),
+                            new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "(ANTES DEL MTTO)", bold: true, size: SIZE_NORMAL, font: "Arial" })] }),
+                        ],
+                    }),
+                    new TableCell({
+                        width: { size: MITAD_DXA, type: WidthType.DXA },
+                        columnSpan: 4,
+                        borders: bordersSinTop,
+                        margins: { top: 100, bottom: 100, left: 50, right: 50 },
+                        children: [
+                            new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "TIPO DE MANTENIMIENTO", bold: true, size: SIZE_NORMAL, font: "Arial" })] }),
+                            new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "(EQUIPO Y/O ACCESORIO)", bold: true, size: SIZE_NORMAL, font: "Arial" })] }),
+                        ],
+                    }),
+                ],
+            }),
+            new TableRow({
+                children: [
+                    celdaCheckbox(data.estado_antes === "funcionamiento", "Funcionamiento", ANCHOS_ESTADO[0], { left: true, bottom: true }),
+                    celdaCheckbox(data.estado_antes === "fuera_servicio", "Fuera de Servicio", ANCHOS_ESTADO[1], { bottom: true }),
+                    celdaCheckbox(data.estado_antes === "NA", "No aplica", ANCHOS_ESTADO[2], { right: true, bottom: true }),
+                    celdaCheckbox(data.tipo_mtt === "MP", "MP", ANCHOS_TIPO[0], { bottom: true }),
+                    celdaCheckbox(data.tipo_mtt === "MC", "MC", ANCHOS_TIPO[1], { bottom: true }),
+                    celdaCheckbox(data.tipo_mtt === "MC_MP", "MP/MC", ANCHOS_TIPO[2], { bottom: true }),
+                    celdaCheckbox(data.tipo_mtt === "NA", "No aplica", ANCHOS_TIPO[3], { right: true, bottom: true }),
+                ],
+            }),
+        ],
+    });
+
+    // --- TABLA 6: Observaciones ---
+    const tablaObservaciones = new Table({
+        width: { size: ANCHO_TABLA, type: WidthType.DXA },
+        layout: TableLayoutType.FIXED,
+        rows: [
+            new TableRow({ children: [celdaTitulo("OBSERVACIONES", ANCHO_TABLA, { borders: bordersSinTop })] }),
+            filaTextoGrande(data.observaciones, 700),
+        ],
+    });
+
+    // --- TABLA 7: Firmas (independiente, 4 columnas iguales) ---
+    const tablaFirmas = new Table({
+        width: { size: ANCHO_TABLA, type: WidthType.DXA },
+        layout: TableLayoutType.FIXED,
+        rows: [
+            new TableRow({
+                children: [
+                    new TableCell({
+                        width: { size: CUARTO_DXA, type: WidthType.DXA },
+                        verticalAlign: VerticalAlign.CENTER,
+                        borders: bordersTabla,
+                        margins: { top: 100, bottom: 100, left: 50, right: 50 },
+                        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "RECIBE ORDEN DE TRABAJO", bold: true, size: SIZE_NORMAL, font: "Arial" })] })],
+                    }),
+                    new TableCell({
+                        width: { size: CUARTO_DXA, type: WidthType.DXA },
+                        verticalAlign: VerticalAlign.CENTER,
+                        borders: bordersTabla,
+                        margins: { top: 100, bottom: 100, left: 50, right: 50 },
+                        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "REALIZA TRABAJO", bold: true, size: SIZE_NORMAL, font: "Arial" })] })],
+                    }),
+                    new TableCell({
+                        width: { size: CUARTO_DXA, type: WidthType.DXA },
+                        verticalAlign: VerticalAlign.CENTER,
+                        borders: bordersTabla,
+                        margins: { top: 100, bottom: 100, left: 50, right: 50 },
+                        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "RECIBE TRABAJO", bold: true, size: SIZE_NORMAL, font: "Arial" })] })],
+                    }),
+                    new TableCell({
+                        width: { size: CUARTO_DXA, type: WidthType.DXA },
+                        verticalAlign: VerticalAlign.CENTER,
+                        borders: bordersTabla,
+                        margins: { top: 100, bottom: 100, left: 50, right: 50 },
+                        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "JEFE DE TALLER", bold: true, size: SIZE_NORMAL, font: "Arial" })] })],
+                    }),
+                ],
+            }),
+            new TableRow({
+                children: [
+                    celdaValor(data.recibe_orden, CUARTO_DXA, { centrado: true, size: SIZE_FIRMAS }),
+                    celdaValor(data.realiza_trabajo, CUARTO_DXA, { centrado: true, size: SIZE_FIRMAS }),
+                    celdaValor(data.recibe_trabajo, CUARTO_DXA, { centrado: true, size: SIZE_FIRMAS }),
+                    celdaValor(data.jefe_taller, CUARTO_DXA, { centrado: true, size: SIZE_FIRMAS }),
+                ],
+            }),
+        ],
+    });
 
     const doc = new Document({
         sections: [
@@ -511,183 +1053,19 @@ async function generarWordOrden(data) {
                     default: encabezadoLogos,
                 },
                 children: [
-                    // --- TABLA PRINCIPAL ---
-                    new Table({
-                        width: { size: 100, type: WidthType.PERCENTAGE },
-                        rows: [
-                            // Fila 1: Título institucional + FOLIO (mismo ancho que Día+Mes+Año)
-                            new TableRow({
-                                children: [
-                                    new TableCell({
-                                        width: { size: ANCHO_TITULO, type: WidthType.PERCENTAGE },
-                                        verticalMerge: VerticalMergeType.RESTART,
-                                        verticalAlign: VerticalAlign.CENTER,
-                                        borders: bordersTabla,
-                                        margins: { top: 120, bottom: 120, left: 100, right: 100 },
-                                        children: [
-                                            new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "INSTITUTO GENERAL DE SALUD DEL ESTADO DE AGUASCALIENTES", bold: true, size: SIZE_NORMAL, font: "Arial" })] }),
-                                            new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "HOSPITAL GENERAL TERCER MILENIO", bold: true, size: SIZE_NORMAL, font: "Arial" })] }),
-                                            new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "DEPARTAMENTO DE INGENIERÍA BIOMÉDICA", bold: true, size: SIZE_NORMAL, font: "Arial" })] }),
-                                            new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "ORDEN DE SERVICIO", bold: false, size: SIZE_NORMAL, font: "Arial" })] }),
-                                        ],
-                                    }),
-                                    celdaTitulo("FOLIO", ANCHO_FOLIO),
-                                ],
-                            }),
-                            // Fila 2: Continuación del título + valor del folio
-                            new TableRow({
-                                children: [
-                                    new TableCell({
-                                        width: { size: ANCHO_TITULO, type: WidthType.PERCENTAGE },
-                                        verticalMerge: VerticalMergeType.CONTINUE,
-                                        borders: bordersTabla,
-                                        children: [new Paragraph({ text: "" })],
-                                    }),
-                                    celdaValor(data.folio, ANCHO_FOLIO, { centrado: true }),
-                                ],
-                            }),
-                            // Fila 3: Nombre, Área, Día, Mes, Año (encabezados)
-                            new TableRow({
-                                children: [
-                                    celdaTitulo("NOMBRE DEL SOLICITANTE", ANCHO_NOMBRE),
-                                    celdaTitulo("ÁREA", ANCHO_AREA),
-                                    celdaTitulo("DÍA", ANCHO_DIA),
-                                    celdaTitulo("MES", ANCHO_MES),
-                                    celdaTitulo("AÑO", ANCHO_ANIO),
-                                ],
-                            }),
-                            // Fila 4: valores correspondientes
-                            new TableRow({
-                                children: [
-                                    celdaValor(data.solicitante, ANCHO_NOMBRE),
-                                    celdaValor(typeof formatearArea === 'function' ? formatearArea(data.area) : data.area, ANCHO_AREA),
-                                    celdaValor(data.dia, ANCHO_DIA, { centrado: true }),
-                                    celdaValor(data.mes, ANCHO_MES, { centrado: true }),
-                                    celdaValor(data.anio, ANCHO_ANIO, { centrado: true }),
-                                ],
-                            }),
-                            // Descripción del trabajo requerido
-                            new TableRow({ children: [celdaTitulo("DESCRIPCIÓN DEL TRABAJO REQUERIDO", 100, { colSpan: 5 })] }),
-                            new TableRow({ children: [celdaValor(data.descripcion, 100, { colSpan: 5 })] }),
-
-                            // Descripción del trabajo realizado
-                            new TableRow({ children: [celdaTitulo("DESCRIPCIÓN DEL TRABAJO REALIZADO", 100, { colSpan: 5 })] }),
-                            new TableRow({ children: [celdaValor(data.trabajo_realizado, 100, { colSpan: 5 })] }),
-
-                            // Refacciones
-                            new TableRow({ children: [celdaTitulo("REFACCIONES, ACCESORIOS Y/O QUÍMICOS UTILIZADOS", 100, { colSpan: 5 })] }),
-                            new TableRow({ children: [celdaValor(data.refacciones_usadas, 100, { colSpan: 5 })] }),
-
-                            // Encabezados Estado del equipo / Tipo de mantenimiento — fila INDEPENDIENTE de 2 columnas,
-                            // exactamente 50% y 50% cada una (sin colSpan, para que no choque con la cuadrícula de arriba)
-                            new TableRow({
-                                children: [
-                                    new TableCell({
-                                        width: { size: 50, type: WidthType.PERCENTAGE },
-                                        borders: bordersTabla,
-                                        margins: { top: 100, bottom: 100, left: 50, right: 50 },
-                                        children: [
-                                            new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "ESTADO DEL EQUIPO Y/O ACCESORIO", bold: true, size: SIZE_NORMAL, font: "Arial" })] }),
-                                            new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "(ANTES DEL MTTO)", bold: true, size: SIZE_NORMAL, font: "Arial" })] }),
-                                        ],
-                                    }),
-                                    new TableCell({
-                                        width: { size: 50, type: WidthType.PERCENTAGE },
-                                        borders: bordersTabla,
-                                        margins: { top: 100, bottom: 100, left: 50, right: 50 },
-                                        children: [
-                                            new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "TIPO DE MANTENIMIENTO", bold: true, size: SIZE_NORMAL, font: "Arial" })] }),
-                                            new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "(EQUIPO Y/O ACCESORIO)", bold: true, size: SIZE_NORMAL, font: "Arial" })] }),
-                                        ],
-                                    }),
-                                ],
-                            }),
-                            // Checkboxes — también 50/50, sin colSpan
-                            new TableRow({
-                                children: [
-                                    new TableCell({
-                                        width: { size: 50, type: WidthType.PERCENTAGE },
-                                        borders: bordersTabla,
-                                        margins: { top: 120, bottom: 120 },
-                                        children: [
-                                            new Paragraph({
-                                                alignment: AlignmentType.CENTER,
-                                                children: [
-                                                    new TextRun({ text: `${data.estado_antes === "funcionamiento" ? "☒" : "☐"} Funcionamiento   `, size: SIZE_NORMAL, font: "Arial" }),
-                                                    new TextRun({ text: `${data.estado_antes === "fuera_servicio" ? "☒" : "☐"} Fuera de Servicio   `, size: SIZE_NORMAL, font: "Arial" }),
-                                                    new TextRun({ text: `${data.estado_antes === "NA" ? "☒" : "☐"} No aplica`, size: SIZE_NORMAL, font: "Arial" }),
-                                                ],
-                                            }),
-                                        ],
-                                    }),
-                                    new TableCell({
-                                        width: { size: 50, type: WidthType.PERCENTAGE },
-                                        borders: bordersTabla,
-                                        margins: { top: 120, bottom: 120 },
-                                        children: [
-                                            new Paragraph({
-                                                alignment: AlignmentType.CENTER,
-                                                children: [
-                                                    new TextRun({ text: `${data.tipo_mtt === "MP" ? "☒" : "☐"} MP `, size: SIZE_NORMAL, font: "Arial" }),
-                                                    new TextRun({ text: `${data.tipo_mtt === "MC" ? "☒" : "☐"} MC `, size: SIZE_NORMAL, font: "Arial" }),
-                                                    new TextRun({ text: `${data.tipo_mtt === "MC_MP" ? "☒" : "☐"} MP/MC `, size: SIZE_NORMAL, font: "Arial" }),
-                                                    new TextRun({ text: `${data.tipo_mtt === "NA" ? "☒" : "☐"} No aplica`, size: SIZE_NORMAL, font: "Arial" }),
-                                                ],
-                                            }),
-                                        ],
-                                    }),
-                                ],
-                            }),
-
-                            // Observaciones
-                            new TableRow({ children: [celdaTitulo("OBSERVACIONES", 100, { colSpan: 5 })] }),
-                            new TableRow({ children: [celdaValor(data.observaciones, 100, { colSpan: 5 })] }),
-
-                            // Encabezados de firmas — fila INDEPENDIENTE de 4 columnas iguales (25% cada una, sin colSpan)
-                            new TableRow({
-                                children: [
-                                    new TableCell({
-                                        width: { size: 25, type: WidthType.PERCENTAGE },
-                                        verticalAlign: VerticalAlign.CENTER,
-                                        borders: bordersTabla,
-                                        margins: { top: 100, bottom: 100, left: 50, right: 50 },
-                                        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "RECIBE ORDEN DE TRABAJO", bold: true, size: SIZE_NORMAL, font: "Arial" })] })],
-                                    }),
-                                    new TableCell({
-                                        width: { size: 25, type: WidthType.PERCENTAGE },
-                                        verticalAlign: VerticalAlign.CENTER,
-                                        borders: bordersTabla,
-                                        margins: { top: 100, bottom: 100, left: 50, right: 50 },
-                                        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "REALIZA TRABAJO", bold: true, size: SIZE_NORMAL, font: "Arial" })] })],
-                                    }),
-                                    new TableCell({
-                                        width: { size: 25, type: WidthType.PERCENTAGE },
-                                        verticalAlign: VerticalAlign.CENTER,
-                                        borders: bordersTabla,
-                                        margins: { top: 100, bottom: 100, left: 50, right: 50 },
-                                        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "RECIBE TRABAJO", bold: true, size: SIZE_NORMAL, font: "Arial" })] })],
-                                    }),
-                                    new TableCell({
-                                        width: { size: 25, type: WidthType.PERCENTAGE },
-                                        verticalAlign: VerticalAlign.CENTER,
-                                        borders: bordersTabla,
-                                        margins: { top: 100, bottom: 100, left: 50, right: 50 },
-                                        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "JEFE DE TALLER", bold: true, size: SIZE_NORMAL, font: "Arial" })] })],
-                                    }),
-                                ],
-                            }),
-                            // Valores de firmas — 4 columnas iguales (25% cada una, sin colSpan), texto tamaño 9,
-                            // se ajusta solo a 2+ líneas si el nombre no cabe (Word nunca "estira" la columna).
-                            new TableRow({
-                                children: [
-                                    celdaValor(data.recibe_orden, 25, { centrado: true, size: SIZE_FIRMAS }),
-                                    celdaValor(data.realiza_trabajo, 25, { centrado: true, size: SIZE_FIRMAS }),
-                                    celdaValor(data.recibe_trabajo, 25, { centrado: true, size: SIZE_FIRMAS }),
-                                    celdaValor(data.jefe_taller, 25, { centrado: true, size: SIZE_FIRMAS }),
-                                ],
-                            }),
-                        ],
-                    }),
+                    tablaEncabezado,
+                    separadorInvisible(),
+                    tablaDescReq,
+                    separadorInvisible(),
+                    tablaDescReal,
+                    separadorInvisible(),
+                    tablaRefacciones,
+                    separadorInvisible(),
+                    tablaEstadoTipo,
+                    separadorInvisible(),
+                    tablaObservaciones,
+                    new Paragraph({ text: "", spacing: { before: 150, after: 100 } }), // aquí sí un espacio visible antes de firmas
+                    tablaFirmas,
                 ],
             },
         ],
@@ -772,10 +1150,10 @@ async function rellenarPlantillaPDF(data) {
     firstPage.drawText(data.anio ?? "", { x: 543, y: 605, size: FONT_SIZE, font: fuentePersonalizada, color: textColor });
 
     // Descripción del Trabajo Requerido (bloque grande, ajustado a varias líneas)
-    drawTextWrapped(firstPage, data.descripcion, { x: 50, y: 550, maxWidth: 500, maxLines: 5 });
+    drawTextWrapped(firstPage, data.descripcion, { x: 50, y: 550, maxWidth: 500, maxLines: 7 });
 
     // Descripción del Trabajo Realizado
-    drawTextWrapped(firstPage, data.trabajo_realizado, { x: 50, y: 460, maxWidth: 500, maxLines: 5 });
+    drawTextWrapped(firstPage, data.trabajo_realizado, { x: 50, y: 460, maxWidth: 500, maxLines: 7 });
 
     // Refacciones, accesorios y/o químicos utilizados
     drawTextWrapped(firstPage, data.refacciones_usadas, { x: 50, y: 375, maxWidth: 500, maxLines: 4 });

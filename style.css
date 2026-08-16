@@ -179,6 +179,20 @@ h1 {
     cursor: pointer;
 }
 
+/* Mismo comportamiento de ancho completo para el resto de botones de acción del formulario.
+   Antes solo #guardarBtn tenía esta excepción, por eso los demás se veían "chiquitos y
+   centrados" (limitados a 300px) mientras que Guardar se veía estirado a todo lo ancho. */
+#wordBtn,
+#pdfBtn,
+#limpiarBtn,
+#cuadriculaBtn {
+    max-width: 100%;
+    padding: 15px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
 /* --- SIDEBAR --- */
 .sidebar h2 {
     margin-bottom: 1.5rem;
@@ -210,10 +224,14 @@ h1 {
     background: rgba(255,255,255,0.3);
 }
 
-/* Página activa dentro del sidebar */
+/* Página activa dentro del sidebar.
+   Antes usaba font-weight:700, pero Google Fonts solo carga los pesos 400 y 600
+   de "Archivo Narrow" (ver el <link> en el <head>), así que el navegador caía a una
+   fuente de reemplazo solo para este texto. Se cambió a 600 para usar el peso real
+   que sí está cargado y mantener la misma tipografía en toda la página. */
 .sidebar nav ul li a.active {
     background: rgba(255,255,255,0.5);
-    font-weight: 700;
+    font-weight: 600;
 }
 
 /* Botón de cerrar sesión con su propio estilo, separado del button global */
@@ -236,9 +254,51 @@ h1 {
     transform: none;
 }
 
+/* --- BOTÓN "OJITO" PARA MOSTRAR/OCULTAR CONTRASEÑA --- */
+.campo-password {
+    position: relative;
+}
+
+.campo-password input {
+    padding-right: 44px;
+}
+
+.toggle-password-btn {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    width: auto;
+    max-width: none;
+    margin: 0;
+    padding: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #636e72;
+}
+
+.toggle-password-btn:hover {
+    background: none;
+    color: #2d3436;
+    transform: translateY(-50%);
+}
+
 textarea {
     resize: vertical;
     min-height: 80px;
+}
+
+/* --- ACCESO RESTRINGIDO (subtítulo del login) --- */
+.acceso-restringido {
+    color: #636e72;
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    margin-bottom: 1.5rem;
 }
 
 /* 7. TABLA DE GESTIÓN DE ÓRDENES */
@@ -266,6 +326,42 @@ textarea {
 
 .tabla-ordenes tbody tr:hover {
     background-color: #f9f9f9;
+}
+
+/* Botones dentro de cada fila de la tabla (PDF, Word, Eliminar).
+   Sin esta regla, heredaban el estilo genérico de "button" (bloque, 100% de ancho,
+   margen grande) pensado para botones de formulario, no para botones chiquitos
+   dentro de una celda — por eso se veían enormes y apilados. */
+.tabla-ordenes .btn-pdf-fila,
+.tabla-ordenes .btn-word-fila,
+.tabla-ordenes .btn-eliminar-fila {
+    display: inline-block;
+    width: auto;
+    max-width: none;
+    margin: 2px 6px 2px 0;
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    border-radius: 6px;
+    font-weight: 600;
+}
+
+.tabla-ordenes .btn-pdf-fila {
+    background-color: #2c83bc;
+}
+
+.tabla-ordenes .btn-word-fila {
+    background-color: #2b579a;
+}
+
+.tabla-ordenes .btn-eliminar-fila {
+    background-color: #e03538;
+}
+
+.tabla-ordenes .btn-pdf-fila:hover,
+.tabla-ordenes .btn-word-fila:hover,
+.tabla-ordenes .btn-eliminar-fila:hover {
+    transform: none;
+    opacity: 0.85;
 }
 
 /* 8. RESPONSIVE (celular / tablet) */

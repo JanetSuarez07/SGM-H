@@ -15,7 +15,8 @@
             <nav>
                 <ul>
                     <li><a href="dashboard.html"> Tablero</a></li>
-                    <li><a href="gestion.html"> Gestión de Órdenes</a></li>
+                    <li><a href="gestion.html" class="active"> Gestión de Órdenes</a></li>
+                    <li><a href="reportes.html"> Descargar por Fechas</a></li>
                 </ul>
             </nav>
             <button class="logout-btn" onclick="cerrarSesion()" style="margin-top: 20px; width: 100%; cursor: pointer;">Cerrar Sesión</button>
@@ -30,8 +31,22 @@
                         <input type="text" id="filtroFolio" placeholder="Buscar por folio...">
                         <select id="filtroArea">
                             <option value="">Todas las áreas</option>
+                            <option value="urgencias_adultos">Urgencias Adultos</option>
+                            <option value="urgencias_pediatricas">Urgencias Pediátricas</option>
                             <option value="medicina_interna">Medicina Interna</option>
-                            <option value="urgencias">Urgencias</option>
+                            <option value="cirugia">Cirugía</option>
+                            <option value="quirofano">Quirófano</option>
+                            <option value="ceye">CEyE</option>
+                            <option value="terapia_adultos">Terapia Adultos</option>
+                            <option value="ucip">UCIP</option>
+                            <option value="pediatria">Pediatría</option>
+                            <option value="traumatologia">Traumatología</option>
+                            <option value="rehabilitacion">Rehabilitación</option>
+                            <option value="imagenologia">Imagenología</option>
+                            <option value="laboratorio">Laboratorio</option>
+                            <option value="consulta_externa">Consulta Externa</option>
+                            <option value="hospitalizacion">Hospitalización</option>
+                            <option value="departamento_biomedico">Departamento Biomédico</option>
                         </select>
                     </div>
                 </div>
@@ -45,7 +60,6 @@
                                 <th>Fecha</th>
                                 <th>Solicitante</th>
                                 <th>Área</th>
-                                <th>Descripción</th>
                                 <th>Acciones</th>
                             </tr>
                         </thead>
